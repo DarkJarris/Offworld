@@ -5,12 +5,7 @@ Var OF_Library_Min as integer = 1;
 Var OF_Library_Pat as integer = 0;
 Var OF_Library_Type as String = "Alpha";
 
-
-Var ship As New OMyShip(965679);
 Var Script_Name As String = "Class"
-
-Response.Add(ship.ShipDiagnostic());
-
 
 Class OMyShip
 { 
