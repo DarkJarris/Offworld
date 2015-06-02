@@ -1,0 +1,117 @@
+#UseInterface Web, ShipPortal;
+
+Var OF_Library_Maj as integer = 0;
+Var OF_Library_Min as integer = 1;
+Var OF_Library_Pat as integer = 0;
+Var OF_Library_Type as String = "Alpha";
+
+
+Var ship As New OMyShip(965679);
+Var Script_Name As String = "Class"
+
+Response.Add(ship.ShipDiagnostic());
+
+
+Class OMyShip
+{ 
+  Var ship As CMyShip;
+  Function New(shipid As Integer)
+  {
+    ship = New CMyShip(shipid);
+  }
+  Function Name() As String
+  {
+    Return This.Name(ship);
+  }
+  
+  Function isDebris() As Boolean
+  {
+    Return This.isDebris(ship);
+  } 
+  
+  Function ShipDiagnostic() As Boolean 
+  {
+    Return This.ShipDiagnostic(ship, Script_Name);
+  }
+  
+  Function Name(ship As CMyShip) As String
+  {
+    Return ship.Name;
+  }
+  
+  Function isDebris(ship As CMyShip) As Boolean
+  {
+    If(ship.Name.EndsWith("(destroyed)") OR ship.Name.EndsWith("(self destroyed)"))
+    {
+      Return True;
+    }
+    Else {
+      Return False;
+    }
+  }
+  
+  Function ShipDiagnostic(ship As CMyShip, Scriptname As String) As Boolean 
+  {
+    //diagnostics
+    //!computer online
+    If ( NOT ship.MainComputerIsActive)
+    {
+      ScriptContext.WriteAppLog("[" & Scriptname & "]: " & ship.Name & " Main computer is Offline! Cannot perform action!");
+      Return False;
+      //computer is active
+    } 
+    Else 
+    {
+      //are we docked?
+      If (ship.Docked)
+      {
+        ScriptContext.WriteAppLog("[" & Scriptname & "]: " & ship.Name & " is docked! Cannot perform action!");
+        Return False;
+        //no we are not docked
+      } 
+      Else 
+      {
+        //do we have minimum crew?
+        If (ship.Crew < ship.Definition.CrewBasis)
+        {
+          ScriptContext.WriteAppLog("[" & Scriptname & "]: " & ship.Name & " does not have enough crew! Cannot perform action!");
+          Return False;
+          //yes we do
+        } 
+        Else 
+        {
+          //are we at >10% hull?
+          If (ship.Hull < (ship.Definition.Hull / 10))
+          {
+            ScriptContext.WriteAppLog("[" & Scriptname & "]: " & ship.Name & " has less than 10% hull! Cannot perform action!");
+            Return False;
+            //yes, were above 10% hull
+          }
+          Else
+          {
+            //do we have enough energy?
+            If (ship.Energy < (ship.Definition.Energy / 20))
+            {
+              ScriptContext.WriteAppLog("[" & Scriptname & "]: " & ship.Name & " has less than 5% energy! Cannot perform action!");
+              Return False;
+              //yes, we have more than 5% energy
+            } 
+            Else
+            {
+              //do we have more than 5% eps?
+              If (ship.Eps < (ship.Definition.EPS / 20))
+              {
+                ScriptContext.WriteAppLog("[" & Scriptname & "]: " & ship.Name & " has less than 5% EPS! Cannot perform action!");
+                Return False;
+              }
+              Else
+              {
+                Return True;
+              } //end >5% EPS
+            } //end >105% energy
+          } //end >10% hull
+        } //end minimum crew
+      } //end docked
+    } //end computer
+  }
+}
