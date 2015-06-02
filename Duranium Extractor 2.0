@@ -1,0 +1,205 @@
+#UseInterface ShipPortal, Web;
+/*Duranium Collector V2.0
+performance and feature overhauls from v1:
+
+You can select which ships to Beam from.
+You can select which ships to Extract from.
+You can now see an overview including cargo bay before you beam.
+You can choose to raise shields afterwards.
+
+begin
+*/
+
+/*
+Global Variables
+*/
+Var schiff As CMyShip = MyShip;
+Var wreck As CShip;
+Var table As New CTable(7);
+Var row As CTableRow = table.AddRow();
+Var table2 As New CTable(5);
+Var row2 As CTableRow = table2.AddRow();
+Var dura_table As New CTable(2);
+Var dura_row As CTableRow = dura_table.AddRow();
+Var RedAlert As Boolean = False;
+
+// set a form up
+Var Form As CHtmlForm;
+Var Url As CScriptUrl;
+Url = New CScriptUrl();
+Form = New CHtmlForm(Url);
+
+// Set up our control section
+dura_row.Cells.item(0).Add("Additional Settings");
+dura_row.Cells.item(0).CssClass = "buttonbody";
+dura_row.Cells.item(1).Add("X");
+dura_row.Cells.item(1).CssClass = "buttonbody";
+
+
+dura_row = dura_table.AddRow();
+dura_row.Cells.Item(0).Add("Raise shields afterwards?");
+dura_row.Cells.Item(1).Add(New CHtmlCheckBox(False, "Checkbox_shields"));
+
+
+Var dura_User As CUser;
+For (Each wreck In schiff.SRS){
+  dura_User = New CUser(wreck.UserID);
+  If (wreck.AlertLevel = EAlertLevel.Red OR wreck.AlertLevel = EAlertLevel.Yellow){
+    If ( NOT IsDebris(wreck) AND wreck.UserID <> schiff.UserID) {
+      RedAlert = True;
+    }
+  }
+}
+
+If (RedAlert) {
+  dura_row = dura_table.AddRow();
+  dura_row.Cells.item(0).Style.Add("color", "red");
+  dura_row.Cells.Item(0).Add("Possible Enemy Ships! Security Override?");
+  dura_row.Cells.Item(1).Add(New CHtmlCheckBox(False, "Checkbox_security"));
+}
+
+
+
+/*
+Functions
+*/
+// Function to check in the ship is debris
+Function IsDebris(Ship As CShip) As Boolean {
+  If (Ship.UserID = 3) {
+    Return True;
+  } Else {
+    Return False;
+  }
+}
+
+//UI for the sector report. also main function
+Function SectorUI(Ship As CShip, Beam As Boolean, Extract As Boolean, ShowOptions As Boolean, Table As CTable) {
+  
+  Var row As CTableRow = Table.AddRow();
+  Var NCC As Integer = Ship.ShipID;
+  Var ShipName As String = Ship.Name;
+  Var ShipUser As New CUser(Ship.UserID);
+  Var goods As New CGoodsInfoEnumerator();
+  Var goodsview As New CGoodsInfoEnumerator();
+  Var Goodcount As Integer = 0;
+  
+  //beaming
+  If (Beam) {
+    While (goods.Next()) {
+      If (Ship.StockRoom.Amount(goods.CurrentWarenInfo.GoodsType) > 0) {
+        schiff.Action.TransferFromShip(NCC, Ship.StockRoom.Amount(goods.CurrentWarenInfo.GoodsType), goods.CurrentWarenInfo.GoodsType)
+      }
+    }
+    ScriptContext.WriteAppLog("[Dura Extractor] : " & ShipName & " - Cargo Beamed Aboard!");
+  }
+  
+  //Extracting
+  If (Extract) {
+    schiff.Action.DeactivateTractorBeam();
+    schiff.Action.ActivateTractorBeam(NCC);
+    schiff.Action.ExtractFromWreck(schiff.Energy);
+    ScriptContext.WriteAppLog("[Dura Extractor] : " & ShipName & " - Hull Extracted!");
+    schiff.Action.DeactivateTractorBeam();
+  }
+  
+  row.Cells.item(0).Add(New CHtmlImage("http://game.en.stne.net/i/s/" & Ship.Definition.ID & ".gif"));
+  row.Cells.item(0).CssClass = "img";
+  row.Cells.item(1).Add(Ship.GetNameHtml());
+  row.Cells.item(2).Add(Ship.Hull & "/" & Ship.Definition.Hull);
+  row.Cells.item(3).Add(Ship.Definition.Name);
+  
+  If ( NOT ShowOptions) {
+    row.Cells.item(4).Add(ShipUser.GetHtmlNameAndID(True));
+  }
+  
+  If (ShowOptions) {
+    While (goodsview.Next()) {
+      If (Ship.StockRoom.Amount(goodsview.CurrentWarenInfo.GoodsType) > 0) {
+        row.Cells.item(4).Add(CGoodsInfo.GetName(goodsview.CurrentWarenInfo.GoodsType) & " : " & Ship.StockRoom.Amount(goodsview.CurrentWarenInfo.GoodsType));
+        row.Cells.item(4).Add(New CHtmlBreak());
+        Goodcount = Goodcount + Ship.StockRoom.Amount(goodsview.CurrentWarenInfo.GoodsType);
+      }
+    }
+    If ((Ship.StockRoom.FreeStorage + Goodcount) < 20000) {
+      row.Cells.item(4).Add(New CHtmlBreak());
+      row.Cells.item(4).Add("Item Found!");
+    }
+    
+    row.Cells.item(5).Add(New CHtmlCheckBox(False, "Beam_" & Ship.ShipID));
+    row.Cells.item(6).Add(New CHtmlCheckBox(False, "Extr_" & Ship.ShipID));
+  }
+  Form.Add(Table);
+}
+
+/*
+Script Actions
+*/
+//table headers
+row.Cells.item(0).Add("Image");
+row.Cells.item(1).Add("Name");
+row.Cells.item(2).Add("Hull");
+row.Cells.item(3).Add("Class");
+row.Cells.item(4).Add("Cargo Bay");
+row.Cells.item(5).Add("Beam");
+row.Cells.item(6).Add("Extract");
+row.Cells.item(0).CssClass = "buttonbody";
+row.Cells.item(1).CssClass = "buttonbody";
+row.Cells.item(2).CssClass = "buttonbody";
+row.Cells.item(3).CssClass = "buttonbody";
+row.Cells.item(4).CssClass = "buttonbody";
+row.Cells.item(5).CssClass = "buttonbody";
+row.Cells.item(6).CssClass = "buttonbody";
+
+row2.Cells.item(0).Add("Image");
+row2.Cells.item(1).Add("Name");
+row2.Cells.item(2).Add("Hull");
+row2.Cells.item(3).Add("Class");
+row2.Cells.item(4).Add("Owner");
+row2.Cells.item(0).CssClass = "buttonbody";
+row2.Cells.item(1).CssClass = "buttonbody";
+row2.Cells.item(2).CssClass = "buttonbody";
+row2.Cells.item(3).CssClass = "buttonbody";
+row2.Cells.item(4).CssClass = "buttonbody";
+
+If(GuestShip.UserID = MyShip.UserID) {
+  Form.Add(dura_table);
+  Form.Add(New CHtmlSubmitButton("Go!", "Dura_name"));
+  
+  Form.Add(New CHtmlSeperator("Wreck Overview");
+  //loop all ships and show debris
+  For (Each wreck In schiff.SRS) {
+    If (IsDebris(wreck)){
+      Var ToBeam As Boolean = False;
+      Var ToExtract As Boolean = False;
+      Var beamvar As String = "Beam_" & wreck.ShipID;
+      Var extrvar As String = "Extr_" & wreck.ShipID;
+      If (Request.Form.ContainsKey(beamvar)) { ToBeam = True; }
+      If (Request.Form.ContainsKey(extrvar)) { ToExtract = True; }
+      If (RedAlert = False OR (RedAlert = True AND Request.Form.ContainsKey("Checkbox_security"))) {
+        SectorUI(wreck, ToBeam, ToExtract, True, table);
+      } Else {
+        SectorUI(wreck, False, False, True, table);
+      }
+    }
+    
+  }
+  Form.Add(New CHtmlSeperator("Other Ships Overview");
+  For (Each wreck In schiff.SRS) {
+    If ( NOT IsDebris(wreck)){
+      SectorUI(wreck, False, False, False, table2);
+    }
+  }
+  //show the table
+  Response.Add(Form);
+}
+
+If (Request.Form.ContainsKey("Checkbox_shields")) {
+  If (RedAlert = False OR (RedAlert = True AND Request.Form.ContainsKey("Checkbox_security"))) {
+    schiff.Action.ActivateShields(True);
+    ScriptContext.WriteAppLog("[Dura Extractor] : Raising shields!");
+  }
+}
+
+If (Request.Form.ContainsKey("Dura_name") AND RedAlert = True AND NOT Request.Form.ContainsKey("Checkbox_security")) {
+  ScriptContext.WriteAppLog("[Dura Extractor] : Cannot continue unless sector is clear or you use security override!");
+}
